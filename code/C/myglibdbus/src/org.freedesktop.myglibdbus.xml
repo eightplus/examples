@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<node name="/org/freedesktop/myglibdbus">
+  <interface name="org.freedesktop.myglibdbus">
+    <method name="work">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="s" name="msg" direction="in"/>
+      <arg type="i" name="ret" direction="out" />
+    </method>
+    <method name="receive">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="s" name="msg" direction="in"/>
+      <arg type="s" name="ret" direction="out" />
+    </method>
+    <method name="exit">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="i" name="ret" direction="out" />
+    </method>
+    <signal name="info_alert">
+      <arg type="s" name="value" direction="out" />
+    </signal>
+  </interface>
+</node>

@@ -45,9 +45,6 @@ static void send_message(DBusGProxy *remote_object)
     if (!dbus_g_proxy_call(remote_object, "work", &err,
         G_TYPE_STRING, "Hello world!", G_TYPE_INVALID,
         G_TYPE_INT, &ret, G_TYPE_INVALID)) {
-
-    }
-    else {
         if (err != NULL) {
             if(err->domain == DBUS_GERROR && err->code == DBUS_GERROR_REMOTE_EXCEPTION)
                 printf("dbus send exception %s:%s",dbus_g_error_get_name(err), err->message);
@@ -56,7 +53,9 @@ static void send_message(DBusGProxy *remote_object)
             g_clear_error(&err);
         }
     }
-    printf("send_message return %d\n", ret);
+    else {
+        printf("send_message return %d\n", ret);
+    }
 }
 
 static void receive_message(DBusGProxy *remote_object)
@@ -66,19 +65,102 @@ static void receive_message(DBusGProxy *remote_object)
     if (!dbus_g_proxy_call(remote_object, "receive", &err,
         G_TYPE_STRING, "I am lixiang!", G_TYPE_INVALID,
         G_TYPE_STRING, &reply_str, G_TYPE_INVALID)) {
-    }
-    else {
-	if (err != NULL) {
-	    if(err->domain == DBUS_GERROR && err->code == DBUS_GERROR_REMOTE_EXCEPTION)
+        if (err != NULL) {
+            if(err->domain == DBUS_GERROR && err->code == DBUS_GERROR_REMOTE_EXCEPTION)
                 printf("dbus receive exception %s:%s",dbus_g_error_get_name(err), err->message);
             else
                 printf("dbus receive Error : %s\n", err->message);
             g_clear_error(&err);
-	}
+        }
     }
-    if (reply_str) {
-        printf("receive_message return %s\n", reply_str);
-        g_free(reply_str);
+    else {
+        if (reply_str) {
+            printf("receive_message return %s\n", reply_str);
+            g_free(reply_str);
+        }
+    }
+}
+
+static void get_list_data(DBusGProxy *remote_object)
+{
+    GError *err = NULL;
+    char **reply_list;
+    char **reply_ptr;
+    if (!dbus_g_proxy_call(remote_object, "get_list", &err,
+                            G_TYPE_STRING, "ready to get list!", G_TYPE_INVALID,
+                            G_TYPE_STRV, &reply_list, G_TYPE_INVALID)) {
+        if (err != NULL) {
+            if(err->domain == DBUS_GERROR && err->code == DBUS_GERROR_REMOTE_EXCEPTION)
+                printf("dbus get_list exception %s:%s",dbus_g_error_get_name(err), err->message);
+            else
+                printf("dbus get_list Error : %s\n", err->message);
+            g_clear_error(&err);
+        }
+    }
+    else {
+        printf("list data:\n");
+        for (reply_ptr = reply_list; *reply_ptr; reply_ptr++)
+            printf ("\"%s\" ", *reply_ptr);
+        printf("\n");
+        g_strfreev(reply_list);
+    }
+}
+
+static void get_array_data(DBusGProxy *remote_object)
+{
+    GError *err = NULL;
+    GValueArray *reply_struct;
+    guint i;
+    if (!dbus_g_proxy_call(remote_object, "get_array", &err,
+                            G_TYPE_INVALID,
+                            G_TYPE_VALUE_ARRAY, &reply_struct, G_TYPE_INVALID)) {
+        if (err != NULL) {
+            if(err->domain == DBUS_GERROR && err->code == DBUS_GERROR_REMOTE_EXCEPTION)
+                printf("dbus get_array exception %s:%s",dbus_g_error_get_name(err), err->message);
+            else
+                printf("dbus get_array Error : %s\n", err->message);
+            g_clear_error(&err);
+        }
+    }
+    else {
+        printf("array data:\n");
+        for (i = 0; i < reply_struct->n_values; i++) {
+            GValue strval = { 0, };
+            g_value_init(&strval, G_TYPE_STRING);
+            if (!g_value_transform(g_value_array_get_nth(reply_struct, i), &strval))
+                g_value_set_static_string(&strval, "(couldn't transform to string)");
+            g_print("%s: %s\n", g_type_name(G_VALUE_TYPE(g_value_array_get_nth(reply_struct, i))), g_value_get_string(&strval));
+        }
+        g_value_array_free(reply_struct);
+        printf("\n");
+    }
+}
+
+static void print_dict(gpointer key, gpointer value, gpointer data)
+{
+    printf ("key:%s, value:%s\n", (char *)key, (char *)value);
+}
+
+static void get_dict_data(DBusGProxy *remote_object)
+{
+    GError *err = NULL;
+    GHashTable *reply_dict;
+    if (!dbus_g_proxy_call(remote_object, "get_dict", &err,
+                              G_TYPE_INVALID,
+                              DBUS_TYPE_G_STRING_STRING_HASHTABLE, &reply_dict, G_TYPE_INVALID)) {
+        if (err != NULL) {
+            if(err->domain == DBUS_GERROR && err->code == DBUS_GERROR_REMOTE_EXCEPTION)
+                printf("dbus get_dict exception %s:%s",dbus_g_error_get_name(err), err->message);
+            else
+                printf("dbus get_dict Error : %s\n", err->message);
+            g_clear_error(&err);
+        }
+    }
+    else {
+        printf("dict data:\n");
+        g_hash_table_foreach(reply_dict, print_dict, NULL);
+        g_hash_table_destroy(reply_dict);
+        printf("\n");
     }
 }
 
@@ -114,6 +196,15 @@ static gboolean handler_gio_channel(GIOChannel *source, GIOCondition condition, 
     }
     else if (!strcmp(buf, "r")) {
         receive_message(remote_object);
+    }
+    else if (!strcmp(buf, "a")) {
+        get_list_data(remote_object);
+    }
+    else if (!strcmp(buf, "b")) {
+        get_array_data(remote_object);
+    }
+    else if (!strcmp(buf, "c")) {
+        get_dict_data(remote_object);
     }
     else if (!strcmp(buf, "q")) {
         exit(0);
@@ -167,7 +258,7 @@ int main()
     //进入到主循环中
     g_main_loop_run(mainloop);
 
-    //g_object_unref(G_OBJECT(remote_object));
+    g_object_unref(G_OBJECT(remote_object));
  
     return 0;
 }

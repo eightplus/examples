@@ -69,8 +69,12 @@ struct _MyGlibDbusClass {
 MyGlibDbus *myglibdbus_new(void);
 
 gint myglibdbus_work(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_value, GError **error);
-gint *myglibdbus_receive(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_value, GError **error);
+gint myglibdbus_receive(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_value, GError **error);
 gint myglibdbus_exit(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value, GError **error);
+
+gboolean myglibdbus_get_list(MyGlibDbus *dbus, const char *msg, DBusGMethodInvocation *ret_value, GError **error);
+gboolean myglibdbus_get_array(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value, GError **error);
+gboolean myglibdbus_get_dict(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value, GError **error);
 
 G_END_DECLS
 

@@ -11,6 +11,19 @@
       <arg type="s" name="msg" direction="in"/>
       <arg type="s" name="ret" direction="out" />
     </method>
+    <method name="get_list">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="s" name="msg" direction="in"/>
+      <arg type="as" name="ret" direction="out" />
+    </method>
+    <method name="get_array">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="(us)" name="ret" direction="out" />
+    </method>
+    <method name="get_dict">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="a{ss}" name="ret" direction="out" />
+    </method>
     <method name="exit">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg type="i" name="ret" direction="out" />

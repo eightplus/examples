@@ -1,3 +1,10 @@
 myglibdbus is a demo
 
+./autogen.sh
+
+./configure
+
+make
+
+
 https://eightplus.github.io/

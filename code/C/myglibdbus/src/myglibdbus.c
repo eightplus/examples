@@ -90,7 +90,7 @@ gint myglibdbus_work(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_va
     return 0;
 }
 
-gint *myglibdbus_receive(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_value, GError **error)
+gint myglibdbus_receive(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_value, GError **error)
 {
     gchar *result;
     g_printf("msg:%s\n", msg);
@@ -109,6 +109,48 @@ gint myglibdbus_exit(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value, GError 
 
     exit(0);
     return ret;
+}
+
+gboolean myglibdbus_get_list(MyGlibDbus *dbus, const char *msg, DBusGMethodInvocation *ret_value, /*char ***ret, */GError **error)
+{
+    char **ret;
+    printf("get_list arg:%s\n", msg);
+    ret = g_new(char *, 3);
+    (ret)[0] = g_strdup("Hello");
+    (ret)[1] = g_strdup("China");
+    (ret)[2] = NULL;
+    dbus_g_method_return(ret_value, ret);
+    g_strfreev(ret);
+
+    return TRUE;
+}
+
+gboolean myglibdbus_get_array(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value, /*GValueArray **ret, */GError **error)
+{
+    GValueArray *ret;
+    ret = g_value_array_new(2);
+    g_value_array_prepend(ret, NULL);
+    g_value_init(g_value_array_get_nth(ret, 0), G_TYPE_STRING);
+    g_value_set_string(g_value_array_get_nth(ret, 0), "kobe");
+    g_value_array_prepend(ret, NULL);
+    g_value_init(g_value_array_get_nth(ret, 0), G_TYPE_UINT);
+    g_value_set_uint(g_value_array_get_nth(ret, 0), 24);
+    dbus_g_method_return(ret_value, ret);
+    g_value_array_free(ret);
+
+    return TRUE;
+}
+
+gboolean myglibdbus_get_dict(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value, /*GHashTable **ret, */GError **error)
+{
+    GHashTable *ret;
+    ret = g_hash_table_new(g_str_hash, g_str_equal);
+    g_hash_table_insert(ret, "name", "lixiang");
+    g_hash_table_insert(ret, "id", "1234567890");
+    dbus_g_method_return(ret_value, ret);
+    g_hash_table_destroy(ret);
+
+    return TRUE;
 }
 
 static GMainLoop *loop = NULL;

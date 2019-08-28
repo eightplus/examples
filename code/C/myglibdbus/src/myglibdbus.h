@@ -32,6 +32,8 @@ G_BEGIN_DECLS
 /* signal */
 enum {
     SIG_INFO_ALERT,
+    SIG_HASH_INFO,
+    SIG_COMPLEX_INFO,
     SIG_LAST_SIGNAL,
 };
 
@@ -80,5 +82,7 @@ G_END_DECLS
 
 int dbus_init(void);
 gint info_alert_dbus_signal_sendmsg(MyGlibDbus *dbus, gchar *info);
+void info_hash_dbus_signal_sendmsg(MyGlibDbus *dbus, const char *contents, GHashTable *hash);
+void info_complex_dbus_signal_sendmsg(MyGlibDbus *dbus, const char *name, const char *id);
 
 #endif // __MY_GLIB_DBUS_H__

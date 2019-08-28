@@ -26,6 +26,9 @@
 #include <dbus/dbus-glib.h>
 #include <glib/giochannel.h>
 
+#include "packedhashtable.h"
+#include "marshal.h"
+
 #define MYGLIBDBUS_NAME	"org.freedesktop.myglibdbus"
 #define MYGLIBDBUS_PATH	"/org/freedesktop/myglibdbus"
 #define MYGLIBDBUS_INTERFACE "org.freedesktop.myglibdbus"
@@ -34,6 +37,17 @@
 static void handler_info_alert(DBusGProxy *proxy, const char *msg, gpointer user_data)
 {
     printf("Received signal and it says: %s\n", msg);
+}
+
+static void handler_hash_info(DBusGProxy *proxy, const char *person, GHashTable *table, gpointer user_data)
+{
+    printf("Received table signal and it says: \"%s\"\n", person);
+    print_packed_hash_table_value(table);
+}
+
+static void handler_complex_info(DBusGProxy *proxy, const char *name, const char *id, gpointer user_data)
+{
+    printf("Received complex signal and it says: name:%s, id:%s\n", name, id);
 }
 
 //调用dbus服务的method
@@ -249,7 +263,18 @@ int main()
     dbus_g_proxy_add_signal(remote_object, "info_alert", G_TYPE_STRING, G_TYPE_INVALID);
 
     //连接信号,将处理函数handler连接到指定的信号上。
-    dbus_g_proxy_connect_signal(remote_object, "info_alert", G_CALLBACK (handler_info_alert), NULL, NULL);
+    dbus_g_proxy_connect_signal(remote_object, "info_alert", G_CALLBACK(handler_info_alert), NULL, NULL);
+
+
+    GType hash_type;
+    hash_type = get_packed_hash_table_type();
+    dbus_g_proxy_add_signal(remote_object, "hash_info", G_TYPE_STRING, hash_type, G_TYPE_INVALID);
+    dbus_g_proxy_connect_signal(remote_object, "hash_info", G_CALLBACK(handler_hash_info), NULL, NULL);
+
+    dbus_g_object_register_marshaller(myglibdbus_marshal_VOID__STRING_STRING_BOXED, G_TYPE_NONE, G_TYPE_STRING, G_TYPE_INVALID);
+    dbus_g_proxy_add_signal(remote_object, "complex_info", G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+    dbus_g_proxy_connect_signal(remote_object, "complex_info", G_CALLBACK(handler_complex_info), NULL, NULL);
+
 
     //监控输入事件
     chan = g_io_channel_unix_new(0);

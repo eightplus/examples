@@ -31,5 +31,13 @@
     <signal name="info_alert">
       <arg type="s" name="value" direction="out" />
     </signal>
+    <signal name="hash_info">
+       <arg name="person" type="s"/>
+       <arg name="table" type="a{sv}"/>
+    </signal>
+    <signal name="complex_info">
+       <arg name="name" type="s"/>
+       <arg name="id" type="s"/>
+    </signal>
   </interface>
 </node>

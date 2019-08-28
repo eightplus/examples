@@ -20,6 +20,8 @@
 
 #include "myglibdbus.h"
 #include "myglibdbus-glue.h"
+#include "packedhashtable.h"
+#include "marshal.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -39,6 +41,22 @@ gint info_alert_dbus_signal_sendmsg(MyGlibDbus *dbus, gchar *info)
     return 0;
 }
 
+void info_hash_dbus_signal_sendmsg(MyGlibDbus *dbus, const char *contents, GHashTable *hash)
+{
+    g_signal_emit(dbus, signals[SIG_HASH_INFO], 0, contents, hash);
+}
+
+static void request_broadcast_hash_info(MyGlibDbus *dbus)
+{
+    GHashTable *table = create_packed_hash_table("lixiang", "1234567890", 30, 58, 170);//name, id, age, weight, height
+    info_hash_dbus_signal_sendmsg(dbus, "developer", table);
+    release_packed_hash_table(table);
+}
+
+void info_complex_dbus_signal_sendmsg(MyGlibDbus *dbus, const char *name, const char *id)
+{
+    g_signal_emit(dbus, signals[SIG_COMPLEX_INFO], 0, name, id);
+}
 
 /*
 实现类类型的定义
@@ -70,12 +88,39 @@ void myglibdbus_class_init(MyGlibDbusClass * kclass)
                         0,
                         NULL,
                         NULL,
-			g_cclosure_marshal_VOID__STRING,/*the function to translate arrays of parameter values to signal emissions into C language callback invocations. 在gmarshal.h中定，如果结构参数复杂需自行定义*/
+                        g_cclosure_marshal_VOID__STRING,/*the function to translate arrays of parameter values to signal emissions into C language callback invocations. 在/usr/include/glib-2.0/gobject/gmarshal.h中定，如果结构参数复杂需自行定义*/
                   	G_TYPE_NONE,/*返回值，因为信号没有返回，所以为NONE*/
 			1,/*参数数目*/
                         G_TYPE_STRING);/*参数类型*/
-}
+    
+    signals[SIG_HASH_INFO] = g_signal_new (
+            "hash_info",
+            G_OBJECT_CLASS_TYPE(kclass),
+            G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+            0,
+            NULL,
+            NULL,
+            g_cclosure_marshal_VOID__STRING,
+            G_TYPE_NONE,
+            2,
+            G_TYPE_STRING,
+            get_packed_hash_table_type());
 
+    //glib有一些标准的列集函数，在gmarshal.h中定义。例如g_cclosure_marshal_VOID__STRING，这个函数适合只有一个字符串参数的信号。如果gmarshal.h没有提供适合的列集函数，我们可以用一个叫glib-genmarshal的工具自动生成列集函数。后面我们会看到，无论是标准列集函数还是生成的列集函数都是既可以用于列集也可以用于散集，这些函数通常都被称作列集函数。
+    //complex_info信号的返回类型是VOID，参数是STRING,STRING,BOXED，见marshal.list文件
+    signals[SIG_COMPLEX_INFO] = g_signal_new (
+            "complex_info",
+            G_OBJECT_CLASS_TYPE(kclass),
+            G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+            0,
+            NULL,
+            NULL,
+            myglibdbus_marshal_VOID__STRING_STRING_BOXED,
+            G_TYPE_NONE,
+            2,
+            G_TYPE_STRING,
+            G_TYPE_STRING);
+}
 
 //实现method
 gint myglibdbus_work(MyGlibDbus *dbus, gchar *msg, DBusGMethodInvocation *ret_value, GError **error)
@@ -119,6 +164,10 @@ gboolean myglibdbus_get_list(MyGlibDbus *dbus, const char *msg, DBusGMethodInvoc
     (ret)[0] = g_strdup("Hello");
     (ret)[1] = g_strdup("China");
     (ret)[2] = NULL;
+
+    //test hash signal
+    request_broadcast_hash_info(dbus);
+
     dbus_g_method_return(ret_value, ret);
     g_strfreev(ret);
 
@@ -137,6 +186,9 @@ gboolean myglibdbus_get_array(MyGlibDbus *dbus, DBusGMethodInvocation *ret_value
     g_value_set_uint(g_value_array_get_nth(ret, 0), 24);
     dbus_g_method_return(ret_value, ret);
     g_value_array_free(ret);
+
+    //test complex signal
+    info_complex_dbus_signal_sendmsg(dbus, "lixiang", "66666666");
 
     return TRUE;
 }

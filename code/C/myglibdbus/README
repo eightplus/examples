@@ -6,5 +6,11 @@ myglibdbus is a demo
 
 make
 
+./clean.sh
+
+
+https://www.freedesktop.org/wiki/Software/dbus/
+
+http://web.mit.edu/barnowl/share/gtk-doc/html/gobject/glib-genmarshal.html
 
 https://eightplus.github.io/

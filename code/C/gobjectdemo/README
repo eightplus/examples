@@ -1,0 +1,10 @@
+sudo apt install libglib2.0-dev
+
+make
+
+./gobjectdemo
+
+
+
+
+https://developer.gnome.org/glib/2.36/

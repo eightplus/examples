@@ -1,5 +1,25 @@
+/*
+ * Copyright (C) 2018 ~ 2020 kobe24_lixiang@126.com
+ *
+ * Authors:
+ *  lixiang    kobe24_lixiang@126.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <glib.h>
 #include <glib-unix.h>
+#include <stdio.h>
 
 #include "my_demo.h"
 
@@ -11,12 +31,11 @@ static gboolean signal_handler(gpointer user_data)
     return FALSE;
 }
 
-void handler_receive_msg(GObject *sender, char* name, gpointer data)
-{  
-    printf("handler_receive_msg name:%s\n", name);
-    //MBooks *book = G_TYPE_CHECK_INSTANCE_CAST(sender, m_books_get_type(), MBooks);
-    //printf("handler: [%s]! Message from [%s].\n",  name, book->name);
-} 
+void handler_receive_msg(GObject *sender, char *name, gpointer data)
+{
+    MyDemo *demo = G_TYPE_CHECK_INSTANCE_CAST(sender, my_demo_get_type(), MyDemo);
+    printf("handler: [%s] from [%s: %ld]\n", name, demo->priv->name, demo->priv->age);
+}
 
 int main(int argc, char* argv[])
 {
@@ -41,7 +60,14 @@ int main(int argc, char* argv[])
     for (i = 0; i < len; i++) {
         printf("construction demos[%d]\n", i);
         //创建对象
-        demos[i]= g_object_new(MY_TYPE_DEMO, NULL);
+        //demos[i]= g_object_new(MY_TYPE_DEMO, NULL);
+        /*demos[i]= g_object_new(MY_TYPE_DEMO,
+                               "name", "kobe",
+                               "age", i,
+                               NULL);*/
+        gchar *name = g_strdup_printf("kobe%d", i);
+        demos[i] = my_demo_new(name, i);
+        g_free(name);
         //绑定信号
         g_signal_connect(demos[i], "broadcast_msg", G_CALLBACK(handler_receive_msg), NULL);
         //发送信号

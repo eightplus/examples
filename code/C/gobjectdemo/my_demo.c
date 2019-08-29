@@ -1,4 +1,38 @@
+/*
+ * Copyright (C) 2018 ~ 2020 kobe24_lixiang@126.com
+ *
+ * Authors:
+ *  lixiang    kobe24_lixiang@126.com
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "my_demo.h"
+
+#include <stdio.h>
+
+enum
+{
+    PROP_0,
+    PROP_NAME,
+    PROP_AGE,
+    N_PROPERTIES
+};
+
+#define MY_DEMO_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), MY_TYPE_DEMO, MyDemoPrivate))
+
+static void my_demo_init(MyDemo *self);
+static void my_demo_class_init(MyDemoClass *klass);
 
 /*
  * G_DEFINE_TYPE 可以让 GObject 库的数据类型系统能够识别我们所定义的 MyDemo 类类型，
@@ -9,13 +43,13 @@
 */
 G_DEFINE_TYPE (MyDemo, my_demo, G_TYPE_OBJECT);
 
+
 static void my_demo_dispose(GObject *object);
 static void my_demo_finalize(GObject *object);
 
 /*
 //以下代码为替换宏G_DEFINE_TYPE的另外一种对my_demo_get_type函数的实现方法，代码不好理解，不建议使用这种方法
-static void     my_demo_init(MyDemo *self);
-static void     my_demo_class_init(MyDemoClass *klass);
+
 static gpointer my_demo_parent_class = ((void*) 0);
 static void     my_demo_class_intern_init(gpointer klass)
 {
@@ -43,10 +77,56 @@ GType my_demo_get_type (void)
 }
 */
 
+static void my_demo_set_property(GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+    MyDemo *self;
+
+    g_return_if_fail(object != NULL);
+
+    self = MY_DEMO (object);
+    //self->priv = MY_DEMO_GET_PRIVATE(self);
+
+    switch (prop_id)
+    {
+    case PROP_NAME:
+        self->priv->name = g_value_dup_string(value);
+        break;
+    case PROP_AGE:
+        self->priv->age = g_value_get_int64(value);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
+static void my_demo_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+    MyDemo *self;
+
+    g_return_if_fail(object != NULL);
+
+    self = MY_DEMO(object);
+
+    switch (prop_id)
+    {
+    case PROP_NAME:
+        g_value_set_string(value, self->priv->name);
+        break;
+    case PROP_AGE:
+        g_value_set_int64(value, self->priv->age);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
 //类结构体初始化函数
-static void my_demo_class_init (MyDemoClass *klass)
+static void my_demo_class_init(MyDemoClass *klass)
 {
     printf("%s\n", __FUNCTION__);
+
     int signal_id = g_signal_new("broadcast_msg",
         my_demo_get_type(),/*G_OBJECT_CLASS_TYPE(kclass)*/
         G_SIGNAL_RUN_LAST,
@@ -62,12 +142,35 @@ static void my_demo_class_init (MyDemoClass *klass)
     GObjectClass *object_class = G_OBJECT_CLASS(klass);
     object_class->finalize = my_demo_finalize;
     object_class->dispose = my_demo_dispose;
+
+    object_class->set_property = my_demo_set_property;
+    object_class->get_property = my_demo_get_property;
+
+    g_object_class_install_property(object_class,
+                                    PROP_NAME,
+                                    g_param_spec_string("name",
+                                                      "name",
+                                                      "Specify the name of demo",
+                                                      "Unknown",
+                                                      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+
+    g_object_class_install_property(object_class,
+                                    PROP_AGE,
+                                    g_param_spec_int64 ("age",
+                                                     "age",
+                                                     "Specify age number",
+                                                     G_MININT64, G_MAXINT64, 0,
+                                                     G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+
+    // 如果对struct MyDemoPrivate 里面添加了成员变量，则执行下面这行代码
+    g_type_class_add_private(klass, sizeof(MyDemoPrivate));
 }
 
 //实例结构体初始化函数
-static void my_demo_init (MyDemo *self)
+static void my_demo_init(MyDemo *self)
 {
     printf("%s\n", __FUNCTION__);
+    self->priv = MY_DEMO_GET_PRIVATE(self);
 }
 
 static void my_demo_dispose(GObject *object)
@@ -78,4 +181,29 @@ static void my_demo_dispose(GObject *object)
 static void my_demo_finalize(GObject *object)
 {
     printf("%s\n", __FUNCTION__);
+
+    MyDemo *self;
+
+    g_return_if_fail(object != NULL);
+
+    self = MY_DEMO(object);
+
+    if (self->priv->name)
+        g_free (self->priv->name);
+
+    G_OBJECT_CLASS(my_demo_parent_class)->finalize(object);
+}
+
+MyDemo *my_demo_new(const gchar *name, gint64 age)
+{
+    MyDemo *demo;
+
+    demo = MY_DEMO(g_object_new(MY_TYPE_DEMO,
+                                "name", name,
+                                "age", age,
+                                NULL));
+
+    printf("get property name:%s, age:%ld\n", demo->priv->name, demo->priv->age);
+
+    return demo;
 }

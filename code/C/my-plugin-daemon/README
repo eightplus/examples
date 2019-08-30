@@ -1,0 +1,19 @@
+###
+my-plugin-daemon(gtk编写的插件管理模块，作为一个session dbus服务运行)
+
+###
+安装开发依赖
+
+sudo apt-get install autotools-dev intltool libpolkit-agent-1-dev libpolkit-gobject-1-dev libdbus-glib-1-dev libdconf-dev libglib2.0-dev libgtk-3-dev mate-common
+
+
+###
+编译和运行(不是直接使用automake，而是使用mate-common提供的mate-autogen进行编译)
+
+./autogen.sh  --prefix=/usr
+
+make
+
+./src/my-plugin-daemon --debug
+
+./clean.sh

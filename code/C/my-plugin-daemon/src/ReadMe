@@ -1,0 +1,5 @@
+###
+根据 org.freedesktop.myplugindaemon.xml 生成 my_daemon_glue.h 和 my_daemon_client.h 文件
+
+dbus-binding-tool --mode=glib-server --prefix=my_daemon org.freedesktop.myplugindaemon.xml --output=my_daemon_glue.h
+dbus-binding-tool --mode=glib-client --prefix=my_daemon org.freedesktop.myplugindaemon.xml --output=my_daemon_client.h

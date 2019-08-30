@@ -1,0 +1,5 @@
+my-plugin-daemon (1.0.0) xenial; urgency=medium
+
+  * init session dbus.
+
+ -- lixiang <kobe24_lixiang@126.com>  Fri, 30 Aug 2019 23:48:56 +0800

@@ -17,3 +17,9 @@ make
 ./src/my-plugin-daemon --debug
 
 ./clean.sh
+
+
+###
+deb包的制作
+
+debuild

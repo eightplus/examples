@@ -4,6 +4,7 @@ AM_CPPFLAGS = \
 	-DDATADIR=\""$(datadir)"\"				\
         -DMY_PLUGIN_LOCALEDIR=\""$(datadir)/locale"\"   \
         -DLIBEXECDIR=\""$(libexecdir)"\"                        \
+        -DMY_PLUGINDIR=\""$(plugindir)"\"               \
 	$(WARN_CFLAGS)						\
 	$(DISABLE_DEPRECATED_CFLAGS)				\
 	$(DAEMON_MODULE_CFLAGS)				\
@@ -29,12 +30,19 @@ BUILT_SOURCES = 			\
 # /usr/include/my-plugin-daemon/my_daemon_client.h & /usr/include/my-plugin-daemon/my_plugin.h
 apidir   = $(includedir)/my-plugin-daemon
 api_DATA = 				\
-	my_daemon_client.h
+	my_daemon_client.h	\
+	my_plugin.h
 
 my_plugin_daemon_SOURCES =		\
 	main.c				\
 	my_daemon.c	\
 	my_daemon.h	\
+        my_plugin.c          \
+        my_plugin.h          \
+        my_plugin_info.c     \
+        my_plugin_info.h     \
+        my_module.c          \
+        my_module.h          \
 	$(NULL)
 
 my_plugin_daemon_CPPFLAGS = \

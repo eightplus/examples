@@ -32,14 +32,18 @@
 
 #include "my_daemon.h"
 #include "my_daemon_glue.h"
+#include "my_plugin_info.h"
 
 #define PLUGIN_DBUS_PATH "/org/freedesktop/MyPluginDaemon"
+#define DEFAULT_SETTINGS_PREFIX "org.freedesktop.MyPluginDaemon"//插件gschema文件的前缀
+#define PLUGIN_EXT ".my-plugin"//用于匹配配置说明文件，比如diskmonitor.my-plugin
 
 #define MY_DAEMON_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), MY_TYPE_DAEMON, MyDaemonPrivate))
 
 struct MyDaemonPrivate
 {
     DBusGConnection *connection;
+    GSList *plugins;
 };
 
 enum {
@@ -86,6 +90,162 @@ static gboolean register_manager(MyDaemon *dbus)
     return TRUE;
 }
 
+static void attempt_activate_plugin(MyPluginInfo *info, gpointer user_data)
+{
+    if (my_plugin_info_get_enabled(info)) {
+        gboolean res;
+        res = my_plugin_info_activate(info);
+        if (res) {
+            g_debug("Plugin %s: active", my_plugin_info_get_id(info));
+        }
+        else {
+            g_debug("Plugin %s: activation failed", my_plugin_info_get_id(info));
+        }
+    }
+    else {
+        g_debug("Plugin %s: inactive", my_plugin_info_get_id(info));
+    }
+}
+
+static gint compare_plugin_id(MyPluginInfo *a, MyPluginInfo *b)
+{
+    const char *id1;
+    const char *id2;
+
+    id1 = my_plugin_info_get_id(a);
+    id2 = my_plugin_info_get_id(b);
+
+    if (id1 == NULL || id2 == NULL) {
+        return -1;
+    }
+
+    return strcmp(id1, id2);
+}
+
+static void on_plugin_activated(MyPluginInfo *info, MyDaemon *manager)
+{
+    const char *plugin_id;
+    plugin_id = my_plugin_info_get_id(info);
+    g_debug("MyDaemon: emitting plugin-activated %s", plugin_id);
+    g_signal_emit(manager, signals [PLUGIN_ACTIVATED], 0, plugin_id);
+}
+
+static void on_plugin_deactivated(MyPluginInfo *info, MyDaemon *manager)
+{
+    const char *plugin_id;
+    plugin_id = my_plugin_info_get_id(info);
+    g_debug("MyDaemon: emitting plugin-deactivated %s", plugin_id);
+    g_signal_emit(manager, signals [PLUGIN_DEACTIVATED], 0, plugin_id);
+}
+
+static gboolean is_item_in_schema(const char * const *items, const char *item)
+{
+    while (*items) {
+        if (g_strcmp0(*items++, item) == 0)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+static void get_plugin_info_from_file(MyDaemon *manager, const char *filename)
+{
+    MyPluginInfo *info;
+    char *schema_path;
+    GSList *l;
+
+    g_debug("Loading plugin: %s", filename);// /usr/lib/x86_64-linux-gnu/my-plugin-daemon/diskmonitor.my-plugin
+
+    //从/usr/lib/x86_64-linux-gnu/my-plugin-daemon/diskmonitor.my-plugin文件中获取插件的相关信息
+    info = my_plugin_info_from_file(filename);
+    if (info == NULL) {
+        goto out;
+    }
+    else {
+        printf("plugin name:%s\n", my_plugin_info_get_name(info));
+        printf("plugin description:%s\n", my_plugin_info_get_description(info));
+        printf("plugin website:%s\n", my_plugin_info_get_website(info));
+        printf("plugin copyright:%s\n", my_plugin_info_get_copyright(info));
+        printf("plugin id:%s\n", my_plugin_info_get_id(info));
+    }
+
+    l = g_slist_find_custom(manager->priv->plugins, info, (GCompareFunc)compare_plugin_id);
+    if (l != NULL) {
+        goto out;
+    }
+
+    schema_path = g_strdup_printf("%s.plugins.%s", DEFAULT_SETTINGS_PREFIX, my_plugin_info_get_id(info));
+    printf("schema_path: %s\n", schema_path);
+    gboolean is_schema = is_item_in_schema(g_settings_list_schemas(), schema_path);
+    if (is_schema) {
+        manager->priv->plugins = g_slist_prepend(manager->priv->plugins, g_object_ref(info));
+        g_signal_connect(info, "activated", G_CALLBACK(on_plugin_activated), manager);
+        g_signal_connect(info, "deactivated", G_CALLBACK(on_plugin_deactivated), manager);
+        my_plugin_info_from_schema(info, schema_path);
+    }
+    else {
+        g_warning("Ignoring unknown module '%s'", schema_path);
+    }
+    g_free(schema_path);
+
+out:
+    if (info != NULL) {
+        g_object_unref(info);
+    }
+}
+
+static void load_all_plugins(MyDaemon *manager)
+{
+    printf("load_all_plugins: %s, %s\n", MY_PLUGINDIR, G_DIR_SEPARATOR_S);
+
+    const char *path = MY_PLUGINDIR G_DIR_SEPARATOR_S;// /usr/lib/x86_64-linux-gnu/my-plugin-daemon/
+    GError *error;
+    GDir *d;
+    const char *name;
+
+    g_debug("Loading settings plugins from dir: %s", path);
+
+    error = NULL;
+    d = g_dir_open(path, 0, &error);
+    if (d == NULL) {
+        g_warning("%s", error->message);
+        printf("open %s error: %s", path, error->message);
+        g_error_free(error);
+        return;
+    }
+
+    while ((name = g_dir_read_name(d))) {
+        char *filename;
+        printf("###name: %s\n", name);
+        if (!g_str_has_suffix(name, PLUGIN_EXT)) {
+            continue;
+        }
+
+        filename = g_build_filename(path, name, NULL);
+        if (g_file_test(filename, G_FILE_TEST_IS_REGULAR)) {
+            get_plugin_info_from_file(manager, filename);
+        }
+        g_free(filename);
+    }
+    g_dir_close(d);
+
+    g_slist_foreach(manager->priv->plugins, (GFunc)attempt_activate_plugin, NULL);
+}
+
+static void unload_plugin(MyPluginInfo *info, gpointer user_data)
+{
+    if (my_plugin_info_get_enabled(info)) {
+        my_plugin_info_deactivate(info);
+    }
+    g_object_unref(info);
+}
+
+static void unload_all_plugins(MyDaemon *dbus)
+{
+     g_slist_foreach(dbus->priv->plugins, (GFunc)unload_plugin, NULL);
+     g_slist_free (dbus->priv->plugins);
+     dbus->priv->plugins = NULL;
+}
+
 /*
   Example:
   dbus-send --session --dest=org.freedesktop.MyPluginDaemon \
@@ -95,14 +255,34 @@ static gboolean register_manager(MyDaemon *dbus)
 */
 gboolean my_daemon_start(MyDaemon *dbus, GError **error)
 {
+    gboolean ret;
+
     g_debug("Starting plugin dbus");
 
-    return TRUE;
+    ret = FALSE;
+
+    if (!g_module_supported()) {
+        g_warning("my-plugin-daemon is not able to initialize the plugins.");
+        g_set_error(error,
+                    MY_DAEMON_ERROR,
+                    MY_DAEMON_ERROR_GENERAL,
+                    "Plugins not supported");
+        goto out;
+    }
+
+    load_all_plugins(dbus);
+
+    ret = TRUE;
+
+ out:
+    return ret;
 }
 
 gboolean my_daemon_stop(MyDaemon *dbus, GError **error)
 {
     g_debug("Stopping plugin dbus");
+
+    unload_all_plugins(dbus);
 
     return TRUE;
 }
@@ -185,7 +365,7 @@ static void my_daemon_finalize(GObject *object)
     G_OBJECT_CLASS(my_daemon_parent_class)->finalize(object);
 }
 
-MyDaemon *my_daemon_new (void)
+MyDaemon *my_daemon_new(void)
 {
     if (dbus_object != NULL) {
         g_object_ref(dbus_object);

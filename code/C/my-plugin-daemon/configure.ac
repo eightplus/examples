@@ -153,6 +153,13 @@ AM_CONDITIONAL(HAVE_POLKIT, test "x$HAVE_POLKIT" = "xyes")
 AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
 
+# ---------------------------------------------------------------------------
+# Plugins
+# ---------------------------------------------------------------------------
+
+plugindir='$(libdir)/my-plugin-daemon'
+AC_SUBST([plugindir])
+
 #dnl ---------------------------------------------------------------------------
 #dnl - Finish
 #dnl ---------------------------------------------------------------------------
@@ -239,6 +246,7 @@ echo "
     sysconfdir:               ${sysconfdir}
     sysconfsubdir:            ${sysconfsubdir}
     localstatedir:            ${localstatedir}
+    plugindir:                ${plugindir}
     datadir:                  ${datadir}
     source code location:     ${srcdir}
     compiler:                 ${CC}

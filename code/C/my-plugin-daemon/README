@@ -20,6 +20,34 @@ make
 
 
 ###
-deb包的制作
+deb包的制作和安装
 
 debuild
+
+sudo dpkg -i my-plugin-daemon_1.0.0_amd64.deb
+
+查看包安装的文件列表：
+
+$ dpkg -L my-plugin-daemon
+```
+/.
+/usr
+/usr/share
+/usr/share/doc
+/usr/share/doc/my-plugin-daemon
+/usr/share/doc/my-plugin-daemon/changelog.gz
+/usr/share/glib-2.0
+/usr/share/glib-2.0/schemas
+/usr/share/glib-2.0/schemas/org.freedesktop.MyPluginDaemon.plugins.diskmonitor.gschema.xml
+/usr/include
+/usr/include/my-plugin-daemon
+/usr/include/my-plugin-daemon/my_daemon_client.h
+/usr/include/my-plugin-daemon/my_plugin.h
+/usr/bin
+/usr/bin/my-plugin-daemon
+/usr/lib
+/usr/lib/x86_64-linux-gnu
+/usr/lib/x86_64-linux-gnu/my-plugin-daemon
+/usr/lib/x86_64-linux-gnu/my-plugin-daemon/libdiskmonitor.so
+/usr/lib/x86_64-linux-gnu/my-plugin-daemon/diskmonitor.my-plugin
+```

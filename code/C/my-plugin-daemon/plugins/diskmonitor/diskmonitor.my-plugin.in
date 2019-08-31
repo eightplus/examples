@@ -1,0 +1,7 @@
+[My Plugin]
+Id=diskmonitor
+_Name=DiskMonitor
+_Description=Warns about low disk space
+Authors=lixiang; eightplus
+Copyright=Copyright © 2019 lixiang
+Website=https://eightplus.github.io/

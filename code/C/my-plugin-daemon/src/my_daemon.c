@@ -29,14 +29,15 @@
 #include <glib-object.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
+#include <gio/gio.h> // 它很重要，否则安装deb包后运行时，在加载plugin的过程中报段错误，但本地编译和运行的时候没有问题，我目前没有想通该原因，望看到的人指导下我
 
 #include "my_daemon.h"
 #include "my_daemon_glue.h"
 #include "my_plugin_info.h"
 
 #define PLUGIN_DBUS_PATH "/org/freedesktop/MyPluginDaemon"
-#define DEFAULT_SETTINGS_PREFIX "org.freedesktop.MyPluginDaemon"//插件gschema文件的前缀
-#define PLUGIN_EXT ".my-plugin"//用于匹配配置说明文件，比如diskmonitor.my-plugin
+#define DEFAULT_SETTINGS_PREFIX "org.freedesktop.MyPluginDaemon" //插件gschema文件的前缀
+#define PLUGIN_EXT ".my-plugin" //用于匹配配置说明文件，比如diskmonitor.my-plugin
 
 #define MY_DAEMON_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), MY_TYPE_DAEMON, MyDaemonPrivate))
 
@@ -147,13 +148,16 @@ static gboolean is_item_in_schema(const char * const *items, const char *item)
     return FALSE;
 }
 
+static gboolean is_schema(const char *schema)
+{
+    return is_item_in_schema(g_settings_list_schemas(), schema);
+}
+
 static void get_plugin_info_from_file(MyDaemon *manager, const char *filename)
 {
     MyPluginInfo *info;
     char *schema_path;
     GSList *l;
-
-    g_debug("Loading plugin: %s", filename);// /usr/lib/x86_64-linux-gnu/my-plugin-daemon/diskmonitor.my-plugin
 
     //从/usr/lib/x86_64-linux-gnu/my-plugin-daemon/diskmonitor.my-plugin文件中获取插件的相关信息
     info = my_plugin_info_from_file(filename);
@@ -161,11 +165,14 @@ static void get_plugin_info_from_file(MyDaemon *manager, const char *filename)
         goto out;
     }
     else {
-        printf("plugin name:%s\n", my_plugin_info_get_name(info));
-        printf("plugin description:%s\n", my_plugin_info_get_description(info));
-        printf("plugin website:%s\n", my_plugin_info_get_website(info));
-        printf("plugin copyright:%s\n", my_plugin_info_get_copyright(info));
-        printf("plugin id:%s\n", my_plugin_info_get_id(info));
+        g_debug("plugin name:%s", my_plugin_info_get_name(info));
+        g_debug("plugin description%s", my_plugin_info_get_description(info));
+        g_debug("plugin website:%s", my_plugin_info_get_website(info));
+        g_debug("plugin copyright:%s", my_plugin_info_get_copyright(info));
+        g_debug("plugin id:%s", my_plugin_info_get_id(info));
+        char **authors = my_plugin_info_get_authors(info);
+        for (int i = 0; authors && authors[i]; i++)
+            g_debug("plugin authors:%s", authors[i]);
     }
 
     l = g_slist_find_custom(manager->priv->plugins, info, (GCompareFunc)compare_plugin_id);
@@ -174,9 +181,8 @@ static void get_plugin_info_from_file(MyDaemon *manager, const char *filename)
     }
 
     schema_path = g_strdup_printf("%s.plugins.%s", DEFAULT_SETTINGS_PREFIX, my_plugin_info_get_id(info));
-    printf("schema_path: %s\n", schema_path);
-    gboolean is_schema = is_item_in_schema(g_settings_list_schemas(), schema_path);
-    if (is_schema) {
+    g_debug("schema_path: %s", schema_path);
+    if (is_schema(schema_path)) {
         manager->priv->plugins = g_slist_prepend(manager->priv->plugins, g_object_ref(info));
         g_signal_connect(info, "activated", G_CALLBACK(on_plugin_activated), manager);
         g_signal_connect(info, "deactivated", G_CALLBACK(on_plugin_deactivated), manager);
@@ -195,7 +201,8 @@ out:
 
 static void load_all_plugins(MyDaemon *manager)
 {
-    printf("load_all_plugins: %s, %s\n", MY_PLUGINDIR, G_DIR_SEPARATOR_S);
+    // MY_PLUGINDIR见Makefile.am中-DMY_PLUGINDIR
+    g_debug("load_all_plugins: %s, %s", MY_PLUGINDIR, G_DIR_SEPARATOR_S);
 
     const char *path = MY_PLUGINDIR G_DIR_SEPARATOR_S;// /usr/lib/x86_64-linux-gnu/my-plugin-daemon/
     GError *error;
@@ -207,15 +214,14 @@ static void load_all_plugins(MyDaemon *manager)
     error = NULL;
     d = g_dir_open(path, 0, &error);
     if (d == NULL) {
-        g_warning("%s", error->message);
-        printf("open %s error: %s", path, error->message);
+        g_warning("open %s error: %s", path, error->message);
         g_error_free(error);
         return;
     }
 
     while ((name = g_dir_read_name(d))) {
         char *filename;
-        printf("###name: %s\n", name);
+        g_debug("###name: %s", name);
         if (!g_str_has_suffix(name, PLUGIN_EXT)) {
             continue;
         }
@@ -274,7 +280,7 @@ gboolean my_daemon_start(MyDaemon *dbus, GError **error)
 
     ret = TRUE;
 
- out:
+out:
     return ret;
 }
 

@@ -1,3 +1,4 @@
 1.0.0
   * dbus init.
   * only add plugin manager module, no plugins.
+  * add a plugin named diskmonitor.

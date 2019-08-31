@@ -1,5 +1,15 @@
-###
-根据 org.freedesktop.myplugindaemon.xml 生成 my_daemon_glue.h 和 my_daemon_client.h 文件
+1、安装开发依赖
+sudo apt-get install libpolkit-gobject-1-dev libdbus-glib-1-dev libglib2.0-dev
 
-dbus-binding-tool --mode=glib-server --prefix=my_daemon org.freedesktop.myplugindaemon.xml --output=my_daemon_glue.h
-dbus-binding-tool --mode=glib-client --prefix=my_daemon org.freedesktop.myplugindaemon.xml --output=my_daemon_client.h
+2、根据marshal.list文件生成对应的.h 和 .c文件
+libtool --mode=execute glib-genmarshal --header marshal.list --prefix=dbusdemo > marshal.h
+libtool --mode=execute glib-genmarshal --body marshal.list --prefix=dbusdemo > marshal.c
+
+3、根据org.freedesktop.dbusdemo.xml生成dbusdemo_dbus_glue.h文件
+dbus-binding-tool --mode=glib-server --prefix=dbusdemo_dbus org.freedesktop.dbusdemo.xml --output=dbusdemo_dbus_glue.h
+
+
+dbus-binding-tool --mode=glib-server --prefix=xiaoming_settings_dbus xiaoming-settings-dbus.xml --output=xiaoming-settings-dbus-glue.h
+
+
+dbus-binding-tool --mode=glib-client --prefix=xiaoming_settings_dbus xiaoming-settings-dbus.xml --output=xiaoming-settings-client.h

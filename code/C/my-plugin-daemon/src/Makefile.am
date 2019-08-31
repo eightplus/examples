@@ -2,9 +2,9 @@ NULL =
 
 AM_CPPFLAGS = \
 	-DDATADIR=\""$(datadir)"\"				\
-        -DMY_PLUGIN_LOCALEDIR=\""$(datadir)/locale"\"   \
+	-DMY_PLUGIN_LOCALEDIR=\""$(datadir)/locale"\"	\
         -DLIBEXECDIR=\""$(libexecdir)"\"                        \
-        -DMY_PLUGINDIR=\""$(plugindir)"\"               \
+	-DMY_PLUGINDIR=\""$(plugindir)"\"		\
 	$(WARN_CFLAGS)						\
 	$(DISABLE_DEPRECATED_CFLAGS)				\
 	$(DAEMON_MODULE_CFLAGS)				\
@@ -45,6 +45,7 @@ my_plugin_daemon_SOURCES =		\
         my_module.h          \
 	$(NULL)
 
+
 my_plugin_daemon_CPPFLAGS = \
 	$(AM_CPPFLAGS)
 
@@ -56,6 +57,7 @@ my_plugin_daemon_LDFLAGS = 	\
 
 my_plugin_daemon_LDADD = 		\
 	$(DAEMON_MODULE_LIBS)
+
 
 EXTRA_DIST = 				\
 	$(Dbusapi_DATA)			\

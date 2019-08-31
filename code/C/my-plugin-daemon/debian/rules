@@ -10,6 +10,7 @@ include /usr/share/dpkg/buildflags.mk
 	dh $@ $(DHFLAGS)
 
 override_dh_install:
+	rm -rf debian/my-plugin-daemon/usr/lib/*/my-plugin-daemon/*.la
 	dh_install --fail-missing
 
 override_dh_auto_configure:

@@ -180,10 +180,14 @@ MyPluginInfo *my_plugin_info_from_file(const char *filename)
     }
 
     // Get Authors
-    info->priv->authors = g_key_file_get_string_list(plugin_file, PLUGIN_GROUP, "Authors", NULL, NULL);
+    gsize length;
+    info->priv->authors = g_key_file_get_string_list(plugin_file, PLUGIN_GROUP, "Authors", &length, NULL);
     if (info->priv->authors == NULL) {
         g_debug("Could not find 'Authors' in %s", filename);
     }
+    /*gint i;
+    for (i=0; i<length; ++i)
+        g_debug("authors[%d] = %s\n", i, info->priv->authors[i]);*/
 
     // Get Copyright
     str = g_key_file_get_string(plugin_file, PLUGIN_GROUP, "Copyright", NULL);

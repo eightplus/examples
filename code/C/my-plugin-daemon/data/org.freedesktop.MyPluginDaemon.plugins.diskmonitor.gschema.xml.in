@@ -1,0 +1,9 @@
+<schemalist>
+  <schema gettext-domain="@GETTEXT_PACKAGE@" id="org.freedesktop.MyPluginDaemon.plugins.diskmonitor" path="/org/freedesktop/my-plugin-daemon/plugins/diskmonitor/">
+    <key name="active" type="b">
+      <default>true</default>
+      <summary>Activation of this plugin</summary>
+      <description>Whether this plugin would be activated by my-plugin-daemon or not</description>
+    </key>
+  </schema>
+</schemalist>

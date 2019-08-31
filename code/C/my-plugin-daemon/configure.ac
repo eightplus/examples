@@ -45,6 +45,10 @@ AM_GLIB_GNU_GETTEXT
 
 AS_AC_EXPAND(LIBEXECDIR, "$libexecdir")
 
+# every plugin's Makefile.am will call this
+MPD_INTLTOOL_PLUGIN_RULE='%.my-plugin:   %.my-plugin.in   $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< [$]@'
+AC_SUBST([MPD_INTLTOOL_PLUGIN_RULE])
+
 dnl ---------------------------------------------------------------------------
 dnl - Dependencies
 dnl ---------------------------------------------------------------------------
@@ -86,6 +90,23 @@ PKG_CHECK_MODULES(DAEMON_MODULE,
 	dbus-glib-1 >= $DBUS_GLIB_REQUIRED_VERSION
 )
 #	gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION
+
+
+PKG_CHECK_MODULES(PLUGIN_MODULE,
+        gtk+-3.0 >= $GTK_REQUIRED_VERSION
+        gio-2.0 >= $GIO_REQUIRED_VERSION
+        dbus-glib-1 >= $DBUS_GLIB_REQUIRED_VERSION
+)
+#       gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION
+
+MPD_PLUGIN_LDFLAGS="-export_dynamic -module -avoid-version -no-undefined"
+case $host_os in
+  darwin*)
+    MPD_PLUGIN_LDFLAGS="${MPD_PLUGIN_LDFLAGS} -Wl,-bundle_loader,\$(top_builddir)/src/my-plugin-daemon"
+    ;;
+esac
+AC_SUBST([MPD_PLUGIN_LDFLAGS])
+
 
 PKG_CHECK_MODULES([DCONF], [dconf >= 0.13.4],
    [AC_DEFINE([HAVE_DCONF_0_13], [1], [Use DCONF >= 0.13.4])],
@@ -227,6 +248,10 @@ AC_SUBST(DEBUG_CFLAGS)
 AC_OUTPUT([
 Makefile
 src/Makefile
+plugins/Makefile
+plugins/diskmonitor/Makefile
+data/Makefile
+data/org.freedesktop.MyPluginDaemon.plugins.diskmonitor.gschema.xml
 po/Makefile.in
 ])
 

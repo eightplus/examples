@@ -1,0 +1,10 @@
+https://en.wikipedia.org/wiki/Callback_(computer_programming)
+
+
+
+mkdir build
+cd build
+cmake ..
+make
+./client/client
+

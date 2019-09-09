@@ -252,6 +252,7 @@ plugins/Makefile
 plugins/diskmonitor/Makefile
 data/Makefile
 data/org.freedesktop.MyPluginDaemon.plugins.diskmonitor.gschema.xml
+data/my-plugin-daemon.desktop.in
 po/Makefile.in
 ])
 

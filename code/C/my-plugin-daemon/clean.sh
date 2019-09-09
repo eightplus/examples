@@ -48,3 +48,5 @@ rm -f ./data/Makefile.in
 rm -f ./data/Makefile
 rm -f ./data/*.valid
 rm -f ./data/*.xml
+rm -f ./data/my-plugin-daemon.desktop.in.in
+rm -f ./data/org.freedesktop.MyPluginDaemon.service.in

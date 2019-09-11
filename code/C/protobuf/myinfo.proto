@@ -1,0 +1,8 @@
+syntax = "proto2";
+package com.xiaoming.protobuf;
+
+message BufferMessage{
+      required int64  id = 1;
+      required string name = 2;
+      optional int32  opt = 3;
+}

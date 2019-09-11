@@ -8,7 +8,7 @@ sudo apt-get install autotools-dev intltool libpolkit-agent-1-dev libpolkit-gobj
 
 
 ###
-编译和运行(不是直接使用automake，而是使用mate-common提供的mate-autogen进行编译)
+编译和运行(不是直接使用automake，而是使用mate-common提供的mate-autogen进行编译。通过命令autoconf –-version 查看系统autoconf版本号，修改configure.ac文件中的AC_PREREQ字段，如：AC_PREREQ([2.69]))
 
 ./autogen.sh  --prefix=/usr
 

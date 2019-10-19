@@ -1,0 +1,6 @@
+
+protoc -I=./ --cpp_out=./ kydroid_hello.proto
+
+
+
+在kydroid_hello.proto文件中定义选项optimize_for的值为LITE_RUNTIME，因此由该.proto文件生成的所有C++类的父类均为::google::protobuf::MessageLite，而非::google::protobuf::Message。在上一篇博客中已经给出了一些简要的说明，MessageLite类是Message的父类，在MessageLite中将缺少Protocol Buffer对反射的支持，而此类功能均在Message类中提供了具体的实现。对于我们的项目而言，整个系统相对比较封闭，不会和更多的外部程序进行交互，与此同时，我们的客户端部分又是运行在Android平台，有鉴于此，我们考虑使用LITE版本的Protocol Buffer。这样不仅可以得到更高编码效率，而且生成代码编译后所占用的资源也会更少，至于反射所能带来的灵活性和极易扩展性，对于该项目而言完全可以忽略。

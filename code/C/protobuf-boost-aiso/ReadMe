@@ -1,0 +1,199 @@
+###编译和运行
+
+1)根据proto文件生成对应发.pb.cc和.pb.h文件
+$ cd client/src/common
+$ protoc -I=./ --cpp_out=./ kydroid_rpc.proto
+$ protoc -I=./ --cpp_out=./ kydroid_bridge.proto
+
+$ cd server/protobuf
+$ protoc -I=./ --cpp_out=./ kydroid_rpc.proto
+$ protoc -I=./ --cpp_out=./ kydroid_bridge.proto
+
+2)编译
+mkdir build
+cd build
+cmake ..
+make -j4
+
+
+3)运行(server运行时生成/tmp/my_desktop，server和client根据unix domain socket的该文件进行网络通信，server先运行，接着再运行client，在server终端上可以输入1 / 2 / 3,此时client终端会收到消息，并回复消息给server；在client终端上输入1 / 2 / 3， server终端可以收到消息)
+./build/server/server
+./build/client/client
+
+
+
+
+###TODO
+
+PROTOBUF_LIBRARIES  -> PROTOBUF_LITE_LIBRARIES
+
+
+###Anbox分析
+
+https://blog.csdn.net/tq08g2z/article/list/3?
+
+http://www.imooc.com/article/278516
+
+http://www.imooc.com/article/278512
+
+http://www.imooc.com/article/281996
+
+
+
+
+Anbox 的 I/O 模型基于 boost.asio 构建。Anbox 中所有的 I/O 事件，在一个线程池中，通过一个 boost::asio::io_service 对象来派发并处理。Anbox 用 anbox::Runtime 类封装一个 boost::asio::io_service 对象，并管理执行任务的线程池。
+anbox::Runtime 类封装了一个 boost::asio::io_service 对象及多个工作线程 std::thread，它还继承 std::enable_shared_from_this<Runtime> 以获得从 this 指针创建智能指针 std::shared_ptr 的能力，同时继承了 DoNotCopyOrMove，以禁掉类的拷贝和移动操作。
+
+anbox::Runtime 类有两大职责，一是 boost::asio::io_service 对象的生命周期管理；二是向 boost::asio::io_service 中提交任务。
+
+在 anbox::Runtime::start() 函数中创建并启动多个线程，执行一个执行 boost::asio::io_service::run() 函数的函数 exception_safe_run()。在 anbox::Runtime::stop() 函数中停掉 boost::asio::io_service 的执行。anbox::Runtime 的析够函数中，还会调用 stop() 函数停掉 boost::asio::io_service 的执行。anbox::Runtime 的类型为 boost::asio::io_service::work 的成员变量 keep_alive_ 也是用于管理 boost::asio::io_service 对象的生命周期的，该对象在析够时也会停掉 boost::asio::io_service 的执行。
+
+
+
+Anbox 需要处理如下这样一些网络 I/O 过程：
+
+    监听 Unix 域 Socket 接受连接。Anbox 的 SessionManager 通过 Unix 域 Socket 与 ContainerManager 进行通信，同时也通过 Unix 域 Socket 与 ContainerManager 启动的 Android 容器内的应用程序通信。首先 ContainerManager 监听在特定位置的 Unix 域 Socket 上。随后 SessionManager 监听几个位置上的 Unix 域 Socket，然后请求 ContainerManager 启动 Android 容器，并将这几个 Unix 域 Socket 映射到容器内的 /dev/ 目录下。Android 容器启动后，一些进程，如 surfaceflinger、cameraservice 等连接这些 Unix 域 Socket，并通过这些 Unix 域 Socket 与 SessionManager 通信，进而操作宿主机的硬件设备。
+在 boost.asio 中，监听 Socket 并接受新连接，通过 acceptor 完成，对于具体的 Unix 域 Socket 而言，是通过 boost::asio::local::stream_protocol::acceptor。boost::asio::local::stream_protocol::acceptor 类对象在创建时，需要为构造函数传入 boost::asio::io_service 及 Unix 域 Socket 的路径，通过 acceptor 的 async_accept() 函数，可以将 Unix 域 Socket 及处理新连接到来时的回调函数提交给底层的 I/O 多路复用器，异步地启动对 Unix 域 Socket 的监听。
+在 Anbox 中，通过 anbox::network::PublishedSocketConnector 封装 boost::asio::local::stream_protocol::acceptor，并为它定义处理新连接到来时的回调函数。anbox::network::PublishedSocketConnector 类的定义（位于 anbox/src/anbox/network/published_socket_connector.h）
+anbox::network::PublishedSocketConnector 保存了 Unix 域 Socket 文件的路径，指向 anbox::Runtime 对象的智能指针，一个指向 ConnectionCreator<boost::asio::local::stream_protocol> 对象的智能指针，及 一个 boost::asio::local::stream_protocol::acceptor。指向 anbox::Runtime 对象的智能指针主要用于从 anbox::Runtime 对象获得其管理的 boost::asio::io_service 的引用。
+
+
+    监听 TCP Socket 接受连接。Anbox 的 SessionManager 作为容器中运行的 Android 与 ADB 进行通信的桥梁，它在与容器中运行的 Android 通过 Unix 域 Socket 通信的同时，也需要与宿主机上的 ADB 通信。SessionManager 通过 TCP 与宿主机上的 ADB 守护进程通信。如同模拟器等 Android 设备一样，SessionManager 遵从 ADB 的通信协议，在发起与 ADB 之间的 TCP 连接的同时，也需要监听一个 TCP 端口，等待 ADB 守护进程发起的连接，以完成整个 ADB 协议。
+Anbox 中监听 TCP Socket 并接受连接的逻辑与监听 Unix 域 Socket 并接受连接的逻辑非常类似，只是依赖的底层 boost.asio 的 acceptor 变为了 boost::asio::ip::tcp::acceptor。封装 boost::asio::ip::tcp::acceptor 组件等由 anbox::network::TcpSocketConnector 完成，这个类的定义（位于 anbox/src/anbox/network/tcp_socket_connector.h）
+监听的地址，不像 anbox::network::PublishedSocketConnector 那样用一个路径来描述就可以了，而是要通过 IP 地址和端口号来描述。
+anbox::network::TcpSocketConnector 类的实现（位于 anbox/src/anbox/network/tcp_socket_connector.cpp）
+启动监听及新连接到来时的回调处理都与 anbox::network::PublishedSocketConnector 类似，只是调用 acceptor 的 async_accept() 之前创建的是 boost::asio::ip::tcp::socket 对象，新连接到来之后，则是交给 ConnectionCreator<boost::asio::ip::tcp> 来处理的。
+
+
+
+    处理从监听的 Unix 域 Socket 接受的 Unix 域 Socket。监听的 Unix 域 Socket 接受新连接之后，需要将新创建的 Unix 域 Socket 提交给底层的 I/O 多路复用器，并为该 Socket 提供读写等 I/O 事件处理处理回调，以完成 Anbox 的应用逻辑。
+处理从监听的 Unix 域 Socket 接受的 Unix 域 Socket
+在 Anbox 中，使用了 anbox::network::PublishedSocketConnector 来监听 Unix 域 Socket 的组件包括如下这些：
+组件	                        所用 ConnectionCreator
+anbox::audio::Server	        anbox::network::DelegateConnectionCreator
+anbox::cmds::SessionManager	anbox::rpc::ConnectionCreator
+anbox::container::Service	anbox::network::DelegateConnectionCreator
+anbox::input::Device	        anbox::network::DelegateConnectionCreator
+在 Anbox 中监听 Unix 域 Socket 的组件有多个，对于新到来的连接的处理方式有着一定的差异，但这种处理又都依赖于相同的底层 Unix 域 Socket 处理框架。
+anbox::rpc::ConnectionCreator 清晰地为我们展示了，Anbox 中处理新接受的 Unix 域 Socket 的基本方式，来看这个类的实现。anbox::rpc::ConnectionCreator 的定义（位于 anbox/src/anbox/rpc/connection_creator.h）
+anbox::rpc::ConnectionCreator 实现用于处理新到来的连接的 create_connection_for() 函数。anbox::rpc::ConnectionCreator 的实现（位于 anbox/src/anbox/rpc/connection_creator.cpp）
+从 anbox::rpc::ConnectionCreator::create_connection_for() 的实现，可以看到 Anbox 处理新接受的 Unix 域 Socket 的基本流程：
+    为新的 boost::asio::local::stream_protocol::socket 对象创建 anbox::network::LocalSocketMessenger，用于将 Socket 添加进底层的 I/O 多路复用器，Socket 的读写等操作。
+    创建消息处理回调函数。当检测到 Socket 上有消息到来时，消息会被读取，并传递给这个回调函数来处理。
+    根据前面创建的 anbox::network::LocalSocketMessenger 和消息处理回调创建 anbox::network::SocketConnection。anbox::network::SocketConnection 是底层 Socket（即 anbox::network::LocalSocketMessenger） 与其用户之间的桥梁， anbox::network::SocketConnection 用于直接将 Socket 提交给底层 I/O 多路复用器以异步读取数据，帮助发送数据，以及拷贝底层数据读取缓冲区的数据并调用用户的消息处理回调函数。
+    为 anbox::network::SocketConnection 设置名称。
+    将 anbox::network::SocketConnection 保存于一个容器，以便于做一些整体的控制。anbox::network::SocketConnection 持有指向该容器的智能指针，以便于在连接断开时，将自身从容器中移除。
+    调用 anbox::network::SocketConnection 的 read_next_message() 函数，将 Socket 提交给底层的 I/O 多路复用器，以启动接收数据。这个函数十分类似于前面看到的 anbox::network::PublishedSocketConnector 和 anbox::network::TcpSocketConnector 的 start_accept() 函数。
+在 anbox::network::SocketConnection::read_next_message() 中，用于存放读取的数据的缓冲区由 anbox::network::SocketConnection 提供，这与 anbox::network::PublishedSocketConnector 和 anbox::network::TcpSocketConnector 的 start_accept() 函数中，事先创建好保存下次到来的新连接的状态的 Socket 非常类似。
+另外一个 anbox::network::ConnectionCreator 实现者是 anbox::network::DelegateConnectionCreator，它仅仅是将处理新连接的职责转出去给一个函数，因而通常实际的新连接处理者也是 anbox::network::PublishedSocketConnector 的创建者。
+使用了 anbox::network::DelegateConnectionCreator 的情况下，各个组件自己处理新到来的连接的方式，与 anbox::rpc::ConnectionCreator 中处理新到来的连接的方式大同小异。
+
+
+
+
+    处理从监听的 TCP Scoket 接受的 TCP Socket。监听的 TCP Socket 接受新连接之后，需要将新创建的 TCP Socket 提交给底层的 I/O 多路复用器，并为该 Socket 提供读写等 I/O 事件处理处理回调，以完成 Anbox 的应用逻辑。
+Anbox 中只有一处监听了 TCP Socket，即在 ADB 消息处理器 anbox::qemu::AdbMessageProcessor 中。anbox::qemu::AdbMessageProcessor 中处理与 ADB 守护进程的交互的函数主要包括如下这些：
+void AdbMessageProcessor::wait_for_host_connection()
+void AdbMessageProcessor::on_host_connection
+void AdbMessageProcessor::read_next_host_message()
+void AdbMessageProcessor::on_host_read_size
+anbox::qemu::AdbMessageProcessor 是在容器中的 Android 内的 adbd 守护进程通过 Unix 域 Socket /dev/qemu_pipe 与 SessionManager 建立连接时创建的，它作为容器中的 Android 内的 adbd 守护进程与宿主机的 ADB 守护进程之间的桥梁而存在。在 anbox::qemu::AdbMessageProcessor::wait_for_host_connection() 函数中，会启动对一个 TCP 端口的监听。
+anbox::qemu::AdbMessageProcessor 为 anbox::network::TcpSocketConnector 传入的 anbox::network::ConnectionCreator 是 anbox::network::DelegateConnectionCreator，为 anbox::network::DelegateConnectionCreator 绑定的 delegate 函数是 anbox::qemu::AdbMessageProcessor::on_host_connection()，这也就是说，对新接受的连接的处理是由 anbox::qemu::AdbMessageProcessor::on_host_connection() 完成的。
+anbox::qemu::AdbMessageProcessor::on_host_connection() 中会根据 <boost::asio::basic_stream_socket<boost::asio::ip::tcp> 创建一个 anbox::network::TcpSocketMessenger 用于将新 Socket 提交给底层的 I/O 多路复用器，读写数据等。messenger_ 表示与容器中的 Android 内的 adbd 之间的连接，anbox::qemu::AdbMessageProcessor::on_host_connection() 在接收到 ADB 守护进程发起的连接之后，还会向容器中的 Android 内的 adbd 发送一条 ok 命令。随后容器中的 Android 内的 adbd 会回复一条消息，以通过 anbox::qemu::AdbMessageProcessor::read_next_host_message() 启动对新连接上的数据的接收。
+anbox::qemu::AdbMessageProcessor::read_next_host_message() 启动对新连接上的数据的接收，类似于 anbox::network::SocketConnection 的 read_next_message()，连接上的数据接收到之后，由 anbox::qemu::AdbMessageProcessor::on_host_read_size() 处理，这个函数与在 anbox::rpc::ConnectionCreator 中看到的传递给 anbox::network::SocketConnection 的 anbox::network::MessageProcessor 一样。
+anbox::qemu::AdbMessageProcessor::on_host_read_size() 对收到的数据的处理方式就是，把收到的数据转发给容器中的 Android 内的 adbd 进程。
+Connector 接受新连接之后，将为新连接创建的 Socket 传给 ConnectionCreator。Anbox 中的几个 ConnectionCreator 实现对新连接的处理方式类似：为新连接创建 SocketMessenger，用于将新连接加入底层 I/O 多路复用器，从新连接读取数据，或者向连接中写入数据。使用者可以在启动对 Socket 上的读事件进行监听时，传入 AnboxReadHandler 回调，在数据到达时得到通知并对数据做一些处理。SocketConnection 为连接管理提供了一些方便，它封装
+SocketMessenger，并可以在收到数据时，通过另外的一个回调 MessageProcessor 将接收到的数据通知出去。更上层通过实现 AnboxReadHandler 或 MessageProcessor 来拿到接收到的数据并做处理。
+
+
+
+
+    发起一个到 TCP 服务器的连接。如前面提到的，Anbox 的 SessionManager 通过 TCP 连接与 ADB 守护进程通信，它会先发起一个到 ADB 守护进程的 TCP 连接。
+在 Anbox 中，仅有一个地方发起了到 TCP 服务器的连接，即在我们前面已经看到过的 anbox::qemu::AdbMessageProcessor::wait_for_host_connection() 函数中：
+在 Anbox 中，发起到 TCP 服务器的连接即是以目标 IP 地址和端口创建 anbox::network::TcpSocketMessenger 对象。anbox::network::TcpSocketMessenger 在其构造函数中会完成与目标服务的连接建立。anbox::network::TcpSocketMessenger 定义（位于 anbox/src/anbox/network/tcp_socket_messenger.h）
+anbox::network::TcpSocketMessenger 对象创建完成之后，将 Socket 提交给底层的 I/O 多路复用器，数据的收发及 Socket 的管理，都与前面看到的为接受的新连接而创建的 anbox::network::TcpSocketMessenger 类似。
+发起一个到 Unix 域 Socket 服务的连接，与发起一个到 TCP 服务器的连接的过程极为相似，都是通过提供一个具体的地址创建一个 SocketMessenger 对象，具体 SocketMessenger 类的构造函数会自动建立连接。新创建的 SocketMessenger 对象与从接受的 Socket 创建的 SocketMessenger 对象无异。
+
+
+
+
+    发起一个到 Unix 域 Socket 服务的连接。Anbox 的 SessionManager 与 ContainerManager 之间通过 Unix 域 Socket 通信，SessionManager 会发起到 ContainerManager 监听的 Unix 域 Socket 服务的连接。
+Anbox 的 SessionManager 会通过 anbox::container::Client 发起与 ContainerManager 的连接，这是一个 Unix 域 Socket 连接。在 anbox::container::Client 中可以看到 Anbox 中发起到 Unix 域 Socket 服务的连接的过程。
+这个类的各成员变量中，messenger_ 表示与目标服务的连接；buffer_ 是数据接收所需的缓冲区；pending_calls_、rpc_channel_、management_api_ 和 processor_ 都用于处理与目标服务间的通信，它们与 SessionManager 自身的逻辑紧密相关；terminate_callback_ 用于连接结束。
+在 anbox::container::Client 的构造函数中，通过传入目标域 Socket 的地址及 std::shared_ptr<Runtime> 来创建 anbox::network::LocalSocketMessenger。在 anbox::network::LocalSocketMessenger 的构造函数中会自动与目标服务建立连接。
+anbox::network::LocalSocketMessenger 的定义（位于 anbox/src/anbox/network/local_socket_messenger.h）
+anbox::network::LocalSocketMessenger 对象创建完成后，将 Socket 提交给底层的 I/O 多路复用器，数据的收发及 Socket 的管理等，都与前面看到的为接受的新连接而创建的 anbox::network::LocalSocketMessenger 类似。
+
+
+
+
+
+
+anbox::rpc::MessageProcessor 是一个同时用于 RPC 调用发起端和接受端的组件。容器管理器作为 RPC 调用的接受端，接收发自于会话管理器的类型为 MessageType::invocation 的消息。
+
+会话管理器与容器管理器之间的 RPC 通信的消息格式为：[3 个字节的消息头] + [经由 Protobuf MessageLite 对象序列化得到的消息体]，其中消息头的前两个字节为 16 位的消息体长度的大尾端表示，第 3 个字节为消息的类型>。RPC 消息的具体定义在 anbox/src/anbox/protobuf/anbox_rpc.proto 文件中
+Invocation 消息用于发起 RPC 调用，Result、Void 和 StructuredError 用于返回响应或错误消息。
+
+对于容器管理器而言，anbox::rpc::MessageProcessor 在其 process_data() 中首先提取消息头，得到消息体的长度和类型，然后提取消息体并反序列化得到 Protobuf 消息 anbox::protobuf::rpc::Invocation，随后将该 Protobuf 消息封装为 anbox::rpc::Invocation 类的对象，并调用 dispatch(Invocation const&) 将消息派发出去。
+
+anbox::rpc::Invocation 类的定义（位于 anbox/src/anbox/rpc/message_processor.h 中）
+
+anbox::rpc::Invocation 类只是对 anbox::protobuf::rpc::Invocation 的简单包装。
+
+anbox::rpc::MessageProcessor 的 dispatch(Invocation const&) 是一个虚函数，其实际的实现位于 ManagementApiMessageProcessor 中。anbox::container::ManagementApiMessageProcessor 的定义（位于 anbox/src/anbox/container/management_api_message_processor.h 中）
+
+anbox::container::ManagementApiMessageProcessor 的实现很简单，只支持两种 RPC 调用，分别为启动 Android 容器和停止 Android 容器，在它的 dispatch() 函数中，根据方法名，调用对应的函数。
+
+函数调用通过一个函数模板 invoke() 完成，该函数模板定义（位于 anbox/src/anbox/rpc/template_message_processor.h）
+
+直接启动和停止 Android 容器的职责，由 anbox::container::ManagementApiSkeleton 完成
+anbox::container::ManagementApiSkeleton 通过 Container 类启动或停止 Android 容器。配合函数模板 invoke() 的定义，及 Protobuf 的相关方法实现，不难理解， start_container() 和 stop_container() 函数的参数消息>，在 invoke() 函数中由 Invocation 消息的参数字段的字节数组反序列化得到，这两个函数的执行过程，都是向 response 参数中填入返回给调用者的响应，并通过 done->Run() 将响应通过 ManagementApiMessageProcessor::send_response() 函数，即
+anbox::rpc::MessageProcessor::send_response() 函数发送回调用端。
+
+在 anbox::rpc::MessageProcessor::send_response() 函数中，先将响应序列化，然后将序列化之后的响应放进 anbox::protobuf::rpc::Result Protobuf 消息中，最后再将 anbox::protobuf::rpc::Result 包装为 Anbox 的 RPC 消息发送回调用端。
+
+anbox::container::ManagementApiSkeleton 的 pending_calls_ 似乎也没有实际的用处。
+
+
+
+
+在 Anbox 的会话管理器中，通过 anbox::container::Client 发起与容器管理器之间的连接，并处理双方之间的 RPC 通信，这个类的定义（位于 anbox/src/anbox/container/client.h）
+anbox::container::Client 主要向外部暴露了两个接口，一是启动容器，二是停止容器，SessionManager 通过这两个接口来控制容器的启动与停止。anbox::container::Client 类的实现（位于 anbox/src/anbox/container/client.cpp）
+anbox::container::Client 类在其构造函数中，即通过 Unix 域 Socket 建立了与容器管理器的连接，它通过 ManagementApiStub 发起 RPC 调用。ManagementApiStub 是容器管理器与会话管理器间 RPC 进程间通信在 RPC 调用发起端的接口层，它提供了 启动 Android 容器 及 关闭 Android 容器 这样的抽象。在 ManagementApiStub 之下，是容器管理器与会话管理器间 RPC 进程间通信的 RPC 层，即 anbox::rpc::Channel，主要用于处理消息的发送。
+
+anbox::container::Client 类本身处理连接中原始数据的接收，这里直接用了裸 SocketMessenger，而没有再用 SocketConnection 封装。anbox::container::Client 收到数据之后，会将数据丢给 anbox::rpc::MessageProcessor 处理。类型为anbox::rpc::PendingCallCache 的 pending_calls_ 主要用于处理 RPC 的异步调用。在 anbox::rpc::Channel 中，消息发送之后，并不会等待响应的接收，而是在 pending_calls_ 中为 RPC 调用注册一个完成回调。在 anbox::rpc::MessageProcessor 中收到响应的消息之后，前面的完成回调被调用，RPC 调用的发起者得到通知。
+anbox::container::Client 直接使用 anbox::container::ManagementApiStub 执行 RPC 调用，这个类的定义（位于 anbox/src/anbox/container/management_api_stub.h）
+anbox::container::ManagementApiStub 定义了启动容器和停止容器的接口，并定义了容器启动完成和容器停止完成之后的回调，它还定义了 Request 类，用于封装请求的响应，及一个 WaitHandle。WaitHandle 由 RPC 调用的发起端用于等待请求的结束。
+尽管实际的 RPC 调用是异步的，但 anbox::container::ManagementApiStub 类通过条件变量为其调用者提供了一种同步执行的假象。启动容器和停止容器的行为通过另外的 Protobuf 消息来描述，这些消息的定义（位于 anbox/src/anbox/protobuf/anbox_container.proto）
+在 ManagementApiStub::start_container() 和 ManagementApiStub::stop_container() 函数中，将参数封装进对应的 Protobuf 消息中，然后更新 Request 的 WaitHandle 中用于表示期待接收到的响应的状态，随后通过 anbox::rpc::Channel 发起 RPC 调用并注册完成回调，最后等待在 Request 的 WaitHandle 上。
+
+启动容器和停止容器的 RPC 调用完成之后，对应的回调被调用，它们通过相应的请求的 WaitHandle 通知调用结束，ManagementApiStub::start_container() 和 ManagementApiStub::stop_container() 函数返回。
+
+ManagementApiStub 的设计实际上有几处问题。首先是定义的 mutex_ 成员，看上去毫无意义；其次是等待的方法 wait_for_all()，这个函数会一直等待条件成立，如果容器管理器进程意外终止，或者由于其它什么原因，无法给会话管理器发回响应消息，则会话管理器会一直等在那里无法结束，正确的做法应该用有超时的等待，等待一段时间之后，就假设启动容器失败，并退出。
+
+WaitHandle 封装标准库的 std::mutex 和 std::condition_variable 来构造等待设施。需要等待的一端，通过调用 expect_result() 来告诉 WaitHandle，需要等待多接收一个响应，并通过 wait_for_all()、wait_for_pending() 和 wait_for_one() 来等待结果的出现。处理收到的消息的线程，通过 result_received() 通知等待的线程。
+
+anbox::rpc::PendingCallCache 是一个容器，用于保存已经发送了请求消息，已经发起但还没有得到响应的 RPC 调用的描述及完成回调，这个类的定义（位于 anbox/src/anbox/rpc/pending_call_cache.h）。anbox::rpc::PendingCallCache 类还定义一个 PendingCall 用于封装请求的响应对象及完成回调，它用一个 map 保存 PendingCall，由于需要在 anbox::rpc::MessageProcessor::process_data() 和 anbox::rpc::Channel 的线程中访问，为了线程安全计，每次访问都有锁进行保护。
+save_completion_details() 用于向 anbox::rpc::PendingCallCache 中放入调用，populate_message_for_result() 用于把返回的响应消息塞给调用，complete_response() 则用于通知结果的返回，调用对应的完成回调。
+
+anbox::rpc::Channel 用于序列化消息，并发送出去，其定义（位于 anbox/src/anbox/rpc/channel.h）
+anbox::rpc::Channel 负责为每个调用消息分配 ID。anbox::rpc::Channel 实现（位于 anbox/src/anbox/rpc/channel.cpp）
+call_method() 用于发起 RPC 调用，这个函数将 RPC 调用描述及完成回调保存进 pending_calls_ 中，随后发送消息。anbox::rpc::Channel 主要在操作 Protobuf 消息的序列化，此处不再赘述。
+可以再看一下 RPC 调用发起端收到响应消息时的处理，主要是 anbox::rpc::MessageProcessor 的下面这一段（位于 anbox/src/anbox/rpc/message_processor.cpp）
+} else if (message_type == MessageType::response) {
+      auto result = make_protobuf_object<protobuf::rpc::Result>();
+      result->ParseFromArray(buffer_.data() + header_size, message_size);      if (result->has_id()) {
+        pending_calls_->populate_message_for_result(*result,
+                                                    [&](google::protobuf::MessageLite *result_message) {
+                                                      result_message->ParseFromString(result->response());
+                                                    });
+        pending_calls_->complete_response(*result);
+      }      for (int n = 0; n < result->events_size(); n++)
+        process_event_sequence(result->events(n));
+    }
+
+    buffer_.erase(buffer_.begin(),
+                  buffer_.begin() + header_size + message_size);
+  }
+
+这段代码将响应消息塞给 pending_calls_ 中保存的对应的 Invocation，并调用完成回调。

@@ -1,0 +1,23 @@
+project(boost_py_cpp_module C CXX)
+cmake_minimum_required(VERSION 2.8.2)
+
+set(CMAKE_CXX_STANDARD 11)
+
+find_package(PythonLibs 2.7 REQUIRED)
+find_package(Boost COMPONENTS python REQUIRED)
+find_package(PkgConfig)
+
+include_directories(${PYTHON_INCLUDE_DIR})
+include_directories(${Boost_INCLUDE_DIR})
+
+set(SOURCE_FILES daemon.cc)
+set(PYCPPMODULE "boost_py_cpp_module")
+
+add_library(${PYCPPMODULE}
+	SHARED
+	${SOURCE_FILES})
+
+target_link_libraries(${PYCPPMODULE}
+	${Boost_LIBRARIES})
+
+set_target_properties(${PYCPPMODULE} PROPERTIES PREFIX "") #去掉lib前缀，否则会生成libboost_py_cpp_module.so，这里我们需要生成的是boost_py_cpp_module.so

@@ -1,0 +1,14 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/freedesktop/MyPluginDaemon">
+  <interface name="org.freedesktop.MyPluginDaemon">
+    <annotation name="org.freedesktop.DBus.GLib.CSymbol" value="my_daemon"/>
+    <method name="start"/>
+    <method name="stop"/>
+    <signal name="PluginActivated">
+      <arg name="name" type="s"/>
+    </signal>
+    <signal name="PluginDeactivated">
+      <arg name="name" type="s"/>
+    </signal>
+  </interface>
+</node>

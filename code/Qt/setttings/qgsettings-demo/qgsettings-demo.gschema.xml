@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="apps.eightplus.qgsettings-demo" path="/apps/eightplus/qgsettings-demo/">
+    <key type="i" name="age">
+      <default>18</default>
+      <summary>Age</summary>
+      <description>Age</description>
+    </key>
+    <key type="s" name="name">
+      <default>'lixiang'</default>
+      <summary>User name</summary>
+      <description>User name</description>
+    </key>
+    <key type="b" name="male">
+      <default>true</default>
+      <summary>Human sex</summary>
+      <description>Human sex</description>
+    </key>
+  </schema>
+</schemalist>

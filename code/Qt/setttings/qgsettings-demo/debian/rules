@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+
+export QT_SELECT=5
+
+QMAKE_OPTS = DEFINES+=NO_DEBUG_ON_CONSOLE
+MAKE_OPTS  = PREFIX=/usr QMAKE=qmake LRELEASE=lrelease QMAKE_OPTS="$(QMAKE_OPTS)"
+
+override_dh_auto_configure:
+	QT_SELECT=qt5 dh_auto_configure \
+                -- "QMAKE_CXXFLAGS=$(CFLAGS)" \
+                qgsettings-demo.pro
+
+%:
+	dh $@ --parallel
+
+override_dh_install:
+	dh_install --fail-missing
+
+override_dh_auto_clean:
+	[ ! -d .moc ] || $(RM) -r .moc
+	[ ! -d .obj ] || $(RM) -r .obj
+	[ ! -d .ui ] || $(RM) -r .ui
+	[ ! -f Makefile ] || dh_auto_clean
+
+override_dh_auto_build:
+	dh_auto_build -- $(MAKE_OPTS)
+

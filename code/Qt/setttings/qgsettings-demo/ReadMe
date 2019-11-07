@@ -1,0 +1,18 @@
+sudo apt install qtbase5-dev qt5-qmake qtchooser qtscript5-dev qttools5-dev-tools qtbase5-dev-tools libgsettings-qt-dev
+
+
+编译和运行：
+sudo install -m 0644 qgsettings-demo.gschema.xml /usr/share/glib-2.0/schemas
+sudo glib-compile-schemas /usr/share/glib-2.0/schemas
+qmake
+make
+./qgsettings-demo
+
+
+编译deb包和运行：
+debuild
+sudo dpkg -i ../qgsettings-demo_1.0.0_amd64.deb
+/usr/bin/qgsettings-demo
+
+
+使用工具dconf-editor可以修改配置文件： apps->eightplus->qgsettings-demo

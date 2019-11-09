@@ -1,0 +1,5 @@
+sudo apt install qtbase5-dev qt5-qmake qtchooser qtscript5-dev qttools5-dev-tools qtbase5-dev-tools
+
+qmake
+make
+./thread-demo

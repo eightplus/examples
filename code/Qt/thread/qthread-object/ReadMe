@@ -2,4 +2,4 @@ sudo apt install qtbase5-dev qt5-qmake qtchooser qtscript5-dev qttools5-dev-tool
 
 qmake
 make
-./thread-demo
+./thread-object-demo

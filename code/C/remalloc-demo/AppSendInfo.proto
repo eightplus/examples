@@ -1,0 +1,16 @@
+package com.eightplus.appinfo;
+
+message Notification {
+    required string package_name = 1;
+    required string app_name = 2;
+    required string text = 3;
+}
+
+message RunningAppItem {
+    required string app_name = 1;
+    required string package_name = 2;
+}
+
+message RunningAppList {
+    repeated RunningAppItem item = 1;
+}

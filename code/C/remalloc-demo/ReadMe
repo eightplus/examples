@@ -1,0 +1,38 @@
+================================
+Demo使用protobuf 2.0进行数据序列化，使用socket(unix domain socket, 对应的socket文件为unix_app)发送和接收数据，主要是为了演示在接收方不知道数据长度的情况下，如何申请空间来存放发送端的所有数据。
+
+对于server1.cc和client1.cc，每一次数据的发送和接收，都意味着要进行两次连续的写和读，发送先发送一个数据头，即数据的大小，接收方读取一次，得到该大小，然后根据该大小申请空间后，再读取该大小的数据。
+
+对于server2.cc和client2.cc，在使用recv进行网络数据读取时，因为无法判断要读的数据会有多大，导致无法固定申请内存空间，所以代码首先molloc申请大小为BUFFSIZE的空间，当空间使用完了，且数据还没接收完的情况下，继续使用realloc动态申请空间，直到所有数据读取完毕。
+
+
+protobuf-compiler
+protoc --version
+
+
+###依赖包安装
+sudo apt install libprotobuf-dev protobuf-compiler
+
+
+###根据.proto生成对应的.cc和.h文件
+protoc -I=./ --cpp_out=./ AppSendInfo.proto
+
+
+###编译
+g++ server1.cc AppSendInfo.pb.cc -o server1 -lprotobuf
+g++ client1.cc AppSendInfo.pb.cc -o client1 -lprotobuf
+
+(
+g++ server2.cc AppSendInfo.pb.cc -o server2 -lprotobuf
+g++ client2.cc AppSendInfo.pb.cc -o client2 -lprotobuf
+)
+
+
+###运行测试
+./server1
+./client1 single 或者 ./client1 lists
+
+(
+./server2
+./client2 single 或者 ./client2 lists
+)

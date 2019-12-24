@@ -1,0 +1,15 @@
+#### 介绍
+简要介绍org.freedesktop.Notifications的消息框。
+
+#### 依赖
+sudo apt install qtbase5-dev qt5-qmake qtchooser qtscript5-dev qttools5-dev-tools qtbase5-dev-tools
+
+###编译运行
+qmake
+make
+./notification
+
+###文档
+https://wiki.archlinux.org/index.php/Desktop_notifications#Usage_in_programming
+
+https://developer.gnome.org/notification-spec/

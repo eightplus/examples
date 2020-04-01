@@ -11,4 +11,4 @@ make
 
 说明
 ===========
-对列表(QListWidget)中的每个子项(QListWidgetItem)的高度进行扩展，点击子项后显示扩展后的高度，再次点击恢复则子项原有的高度。
+对列表(QListWidget)中的每个子项(QListWidgetItem)的高度进行扩展，点击子项后显示扩展后的高度，再次点击则恢复子项原有的高度。

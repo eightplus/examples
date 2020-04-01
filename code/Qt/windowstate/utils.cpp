@@ -168,6 +168,8 @@ void Utils::showMaximizedWindow(int wid, int state)
 void Utils::showMinimizedWindow(int wid, bool minimized)
 {
     const auto display = QX11Info::display();//Display *display = QX11Info::display();
+
+    qDebug() << "display:" << display;
     const auto screen = QX11Info::appScreen();
 
     const Atom wmState = XInternAtom(display, "_NET_WM_STATE", false);

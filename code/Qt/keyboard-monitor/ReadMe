@@ -1,0 +1,5 @@
+sudo apt install qtbase5-dev qt5-qmake qt5-default qtscript5-dev qttools5-dev-tools libqt5x11extras5-dev pkg-config libxcb1-dev libx11-dev
+
+1)获取CapsLock大小写键状态(使用X11，在pro文件里添加 LIBS += -lX11)
+2)获取按键事件，如windows键(Qt::Key_Meta)
+3)输入法数据QEvent::InputMethod

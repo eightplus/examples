@@ -29,7 +29,7 @@ public:
             xcb_generic_event_t* ev = static_cast<xcb_generic_event_t*>(message);
 
             int evType = (ev->response_type & ~0x80);
-//            qDebug() << "xcb_generic_event_t===========" << evType;
+            qDebug() << "xcb_generic_event_t===========" << evType;
 
             if (evType == XCB_ENTER_NOTIFY) {
                 qDebug() << "XCB_ENTER_NOTIFY===========";

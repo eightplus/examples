@@ -1,0 +1,54 @@
+GtkGrid{
+    background-color: transparent;
+    background-image: none;
+}
+
+.white_label{
+	font-size: 12px;
+	color: white;
+        font-family: "微软雅黑";
+}
+
+.title_label{
+        font-size: 12px;
+        color: #828282;
+        font-family: "微软雅黑";
+}
+
+.close_btn{
+        background: url("close.png") no-repeat;
+        background-color: transparent;
+        border-image: none;
+        border: none;
+        border-radius: 0px;
+}
+
+.close_btn:hover{
+        background: url("close.png") no-repeat -36px center;
+}
+
+.close_btn:active{
+        background: url("close.png") no-repeat -72px center;
+}
+
+.min_btn{
+    background: url("min.png") no-repeat;
+    background-color: transparent;
+    border-image: none;
+    border: none;
+    border-radius: 0px;
+}
+
+.min_btn:hover{
+    background: url("min.png") no-repeat -36px center;
+}
+
+.min_btn:active{
+    background: url("min.png") no-repeat -72px center;
+}
+
+.top_content{
+    background-image: url("banner.png");
+    border: none;
+    border-radius: 0px;
+}

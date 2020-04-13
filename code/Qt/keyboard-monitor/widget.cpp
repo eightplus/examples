@@ -78,6 +78,56 @@ void Widget::onLineEditTextChanged(const QString &text)
     checkStatus();
 }
 
+void Widget::keyPressEvent(QKeyEvent *event)
+{
+    int key = event->key();
+    switch (key)
+    {
+    case Qt::Key_Shift:
+    case Qt::Key_Control:
+        key = 0;
+        QWidget::keyPressEvent(event);
+        return;
+    case Qt::Key_Meta:
+        qDebug() << "=============Key_Meta=============";
+        break;
+    case Qt::Key_Alt:
+    case Qt::Key_AltGr:
+    case Qt::Key_Super_L:
+    case Qt::Key_Super_R:
+    case Qt::Key_Menu:
+    case 0:
+    case Qt::Key_unknown:
+        key = 0;
+        QWidget::keyPressEvent(event);
+        return;
+    }
+    QKeySequence seq(event->modifiers() + event->key());
+    qDebug() << "BBBBBBBBBBBBBBBBBBBBB" << seq.toString();
+    QWidget::keyPressEvent(event);
+}
+
+bool Widget::event(QEvent *event)
+{
+    if (event->type() == QEvent::ApplicationFontChange) {
+
+    }
+    else if (event->type() == QEvent::ToolTip) {
+
+    }
+    else if (event->type() == QEvent::Leave)  {
+
+    }
+    else if (event->type() == QEvent::MouseButtonPress) {
+
+    }
+    else if (event->type() == QEvent::KeyPress) {
+        qDebug() << "=============KeyPress=============";
+    }
+
+    return QWidget::event(event);
+}
+
 bool Widget::eventFilter(QObject *watched, QEvent *event)
 {
     if (event->type() == QEvent::InputMethod) {//让QLineEdit失去焦点后进行输入法测试
@@ -114,7 +164,7 @@ bool Widget::eventFilter(QObject *watched, QEvent *event)
         }
     }
     else if (event->type() == QEvent::KeyPress) {
-        //qDebug() << "QEvent::KeyPress";
+        qDebug() << "QEvent::KeyPress";
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
         if (keyEvent) {
             qDebug() << "keyEvent->text():" << keyEvent->text() << ",key():" << keyEvent->key();

@@ -7,7 +7,9 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QDebug>
-#include <QtDebug>
+#include <QDateTime>
+#include <QTime>
+#include <QMutex>
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
@@ -103,7 +105,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-
+    if (m_fp.isOpen()) {
+        m_fp.close();
+    }
 }
 
 void MainWindow::moveCenter()
@@ -152,11 +156,18 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     QWidget::mouseMoveEvent(event);
 }
 
+
+QFile MainWindow::m_fp;
 #if QT_VERSION >= 0x050000
 void MainWindow::myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString & msg) {
 #else
 void MainWindow::myMessageOutput(QtMsgType type, const char *msg) {
 #endif
+
+    static QMutex mutex;
+    mutex.lock();
+
+
     static QString m_origLine;
     static QString m_resultLine;
     static QRegExp m_regExp;
@@ -197,7 +208,24 @@ void MainWindow::myMessageOutput(QtMsgType type, const char *msg) {
             abort();
     }
 
-    if (m_resultLine.isEmpty()) return;
+    if (m_resultLine.isEmpty()) {
+        mutex.unlock();
+        return;
+    }
 
+    //m_resultLine = "["+ QTime::currentTime().toString("hh:mm:ss:zzz") +"] "+ m_resultLine;
+    m_resultLine = "["+ QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss ddd") +"] "+ m_resultLine;
     qDebug() << "Log:" << m_resultLine;
+
+    if (!m_fp.isOpen()) {
+        m_fp.setFileName("log.txt");
+        m_fp.open(QIODevice::WriteOnly | QIODevice::Append);
+    }
+    if (m_fp.isOpen()) {
+        QString line = m_resultLine + "\r\n";
+        m_fp.write(line.toUtf8().constData());
+        m_fp.flush();
+    }
+
+    mutex.unlock();
 }

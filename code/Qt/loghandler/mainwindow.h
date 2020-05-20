@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QWidget>
+#include <QFile>
 
 QT_BEGIN_NAMESPACE
 class QPushButton;
@@ -33,6 +34,7 @@ private:
     QPoint m_dragPosition;
     bool m_mousePressed;
 
+    static QFile m_fp;
 #if QT_VERSION >= 0x050000
     static void myMessageOutput(QtMsgType type, const QMessageLogContext &, const QString & msg);
 #else

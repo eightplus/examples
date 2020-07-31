@@ -1,0 +1,13 @@
+####
+使用Glibtop库获取当前的进程列表信息
+
+
+安装依赖：
+sudo apt install libgtop2-dev
+
+编译：
+g++ processlist.c -o run `pkg-config --cflags --libs glib-2.0 libgtop-2.0 libsystemd`
+
+运行：
+./run
+
